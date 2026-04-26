@@ -1,0 +1,900 @@
+
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>BilalToday AI</title>
+    
+    <!-- Externe Bibliotheken -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.0.6/purify.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <style>
+        /* ==========================================================================
+           Apple Typography & Core Variables
+           ========================================================================== */
+        :root {
+            --bg-deep: #000000;
+            --glass-bg: rgba(25, 25, 28, 0.45);
+            --glass-blur: blur(60px) saturate(200%);
+            --glass-border: rgba(255, 255, 255, 0.08);
+            --glass-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.15);
+            
+            --text-primary: #ffffff;
+            --text-secondary: rgba(235, 235, 245, 0.6);
+            --accent: #0A84FF;
+            
+            --bubble-user: #0A84FF;
+            --bubble-bot: rgba(30, 30, 32, 0.6);
+            
+            --font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Helvetica Neue", Arial, sans-serif;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: var(--font-family);
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+
+        body {
+            background-color: var(--bg-deep);
+            color: var(--text-primary);
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+            position: relative;
+        }
+
+        /* ==========================================================================
+           Apple Intelligence Ambient Glow Background
+           ========================================================================== */
+        .ambient-glow {
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            z-index: 0; pointer-events: none; overflow: hidden; background: #000;
+        }
+
+        .ambient-glow::before, .ambient-glow::after {
+            content: ''; position: absolute;
+            width: 70vw; height: 70vh; border-radius: 50%;
+            filter: blur(130px); opacity: 0.55;
+            animation: float 25s infinite ease-in-out alternate;
+        }
+
+        .ambient-glow::before {
+            background: radial-gradient(circle, rgba(94, 56, 255, 0.7), rgba(255, 41, 117, 0));
+            top: -10%; left: -10%;
+        }
+
+        .ambient-glow::after {
+            background: radial-gradient(circle, rgba(10, 132, 255, 0.5), rgba(0, 212, 255, 0));
+            bottom: -20%; right: -10%; animation-delay: -12s;
+        }
+
+        @keyframes float {
+            0% { transform: translate(0, 0) scale(1); }
+            50% { transform: translate(15%, 10%) scale(1.1); }
+            100% { transform: translate(-10%, -15%) scale(0.9); }
+        }
+
+        .apple-glass {
+            background: var(--glass-bg);
+            backdrop-filter: var(--glass-blur);
+            -webkit-backdrop-filter: var(--glass-blur);
+            border: 1px solid var(--glass-border);
+            box-shadow: var(--glass-highlight), 0 24px 48px rgba(0,0,0,0.5);
+        }
+
+        /* ==========================================================================
+           Toast System (Benachrichtigungen)
+           ========================================================================== */
+        #toast-container {
+            position: fixed; top: 40px; left: 50%; transform: translateX(-50%);
+            z-index: 9999; display: flex; flex-direction: column; gap: 10px; pointer-events: none;
+        }
+
+        .toast {
+            background: rgba(20, 20, 20, 0.85); backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px); border: 1px solid rgba(255,255,255,0.1);
+            color: #fff; padding: 12px 24px; border-radius: 30px;
+            font-size: 14px; font-weight: 500; box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            animation: slideDown 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+            display: flex; align-items: center; gap: 10px; pointer-events: auto;
+        }
+
+        @keyframes slideDown {
+            from { opacity: 0; transform: translateY(-20px) scale(0.9); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+
+        /* ==========================================================================
+           AUTH VIEW (Login & Admin)
+           ========================================================================== */
+        #auth-view {
+            position: absolute; inset: 0; display: flex;
+            justify-content: center; align-items: center; z-index: 100; padding: 20px;
+        }
+
+        .auth-card {
+            width: 100%; max-width: 380px; border-radius: 36px;
+            padding: 40px 32px; text-align: center; position: relative; overflow: hidden;
+        }
+
+        .auth-logo {
+            width: 72px; height: 72px; margin: 0 auto 24px; color: #fff;
+            filter: drop-shadow(0 0 20px rgba(255,255,255,0.4));
+        }
+
+        .auth-card h2 {
+            font-size: 28px; font-weight: 600; letter-spacing: -0.04em; margin-bottom: 32px;
+        }
+
+        .input-group { margin-bottom: 16px; }
+
+        .glass-input {
+            width: 100%; background: rgba(255, 255, 255, 0.06);
+            border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 16px;
+            padding: 18px 20px; color: var(--text-primary); font-size: 16px; outline: none; transition: all 0.3s;
+        }
+
+        .glass-input:focus {
+            background: rgba(255, 255, 255, 0.12); border-color: rgba(255, 255, 255, 0.3);
+        }
+        .glass-input::placeholder { color: var(--text-secondary); }
+
+        .glass-btn {
+            width: 100%; background: #ffffff; color: #000000;
+            border: none; border-radius: 16px; padding: 18px; font-size: 16px; font-weight: 600;
+            cursor: pointer; margin-top: 10px; transition: transform 0.2s cubic-bezier(0.2, 0, 0, 1), opacity 0.2s;
+        }
+        .glass-btn:active { transform: scale(0.96); }
+
+        .auth-switch {
+            margin-top: 24px; font-size: 14px; color: var(--text-secondary);
+            cursor: pointer; font-weight: 500; transition: color 0.2s;
+        }
+        .auth-switch:hover { color: var(--text-primary); }
+
+        .admin-bypass {
+            margin-top: 40px; font-size: 12px; color: rgba(255,255,255,0.3);
+            cursor: pointer; display: inline-block; transition: all 0.2s;
+        }
+        .admin-bypass:hover { color: rgba(255,255,255,0.8); }
+
+        #admin-view { display: none; }
+        #standard-login { display: block; }
+
+        /* ==========================================================================
+           APP VIEW (Sidebar & Main Chat)
+           ========================================================================== */
+        #app-view { display: none; width: 100%; height: 100%; z-index: 10; }
+
+        #sidebar {
+            width: 320px; height: 100%; display: flex; flex-direction: column;
+            border-right: 1px solid var(--glass-border);
+            background: rgba(18, 18, 20, 0.4);
+            backdrop-filter: var(--glass-blur); -webkit-backdrop-filter: var(--glass-blur);
+            transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1); z-index: 50;
+        }
+
+        .sidebar-header { padding: 24px; }
+
+        .new-chat-btn {
+            width: 100%; background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.05); color: var(--text-primary);
+            padding: 14px; border-radius: 16px; display: flex; align-items: center; justify-content: center;
+            gap: 10px; font-size: 15px; font-weight: 600; cursor: pointer; transition: all 0.2s;
+        }
+        .new-chat-btn:hover { background: rgba(255, 255, 255, 0.15); }
+
+        .chat-list { flex: 1; overflow-y: auto; padding: 0 16px; }
+        .chat-list::-webkit-scrollbar { display: none; }
+
+        .chat-item {
+            padding: 14px 18px; border-radius: 14px; margin-bottom: 6px; cursor: pointer;
+            color: var(--text-secondary); font-size: 15px; font-weight: 500; display: flex;
+            align-items: center; justify-content: space-between; transition: all 0.2s;
+        }
+        .chat-item:hover, .chat-item.active { background: rgba(255, 255, 255, 0.1); color: var(--text-primary); }
+        .chat-title-text { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 200px; }
+
+        .sidebar-footer { padding: 20px 24px; border-top: 1px solid var(--glass-border); }
+
+        .user-profile {
+            display: flex; align-items: center; gap: 12px; color: var(--text-secondary);
+            font-size: 15px; font-weight: 500; cursor: pointer; padding: 10px; border-radius: 14px;
+            transition: background 0.2s;
+        }
+        .user-profile:hover { background: rgba(255,255,255,0.08); color: var(--text-primary); }
+
+        /* Main Chat Area */
+        #main-chat { flex: 1; display: flex; flex-direction: column; position: relative; }
+
+        .mobile-nav {
+            display: none; padding: 16px 24px; align-items: center; justify-content: space-between;
+            border-bottom: 1px solid var(--glass-border); background: rgba(20, 20, 20, 0.3);
+            backdrop-filter: blur(30px); -webkit-backdrop-filter: blur(30px); z-index: 40;
+        }
+
+        .icon-btn {
+            background: none; border: none; color: var(--text-primary); cursor: pointer;
+            display: flex; align-items: center; justify-content: center; opacity: 0.7; transition: opacity 0.2s;
+        }
+        .icon-btn:hover { opacity: 1; }
+
+        #chat-messages {
+            flex: 1; overflow-y: auto; padding: 40px 24px 160px;
+            display: flex; flex-direction: column; gap: 24px; align-items: center; scroll-behavior: smooth;
+        }
+        #chat-messages::-webkit-scrollbar { display: none; }
+
+        /* ==========================================================================
+           Welcome Screen & Suggestions
+           ========================================================================== */
+        .welcome-screen {
+            margin-top: 10vh; text-align: center; opacity: 0;
+            animation: fadeUpIn 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards; width: 100%; max-width: 600px;
+        }
+
+        @keyframes fadeUpIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+
+        .welcome-screen h1 {
+            font-size: 40px; font-weight: 600; letter-spacing: -0.04em; margin-bottom: 12px;
+            background: linear-gradient(135deg, #ffffff 30%, rgba(255,255,255,0.3));
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+        }
+
+        .suggestions-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 40px; text-align: left; }
+        .suggestion-card {
+            background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1);
+            padding: 16px; border-radius: 20px; cursor: pointer; transition: all 0.3s;
+        }
+        .suggestion-card:hover { background: rgba(255,255,255,0.1); transform: translateY(-2px); }
+        .suggestion-card h4 { font-size: 14px; font-weight: 600; margin-bottom: 6px; display: flex; align-items: center; gap: 8px;}
+        .suggestion-card p { font-size: 13px; color: var(--text-secondary); line-height: 1.4;}
+
+        /* ==========================================================================
+           iMessage Style Bubbles
+           ========================================================================== */
+        .message-row {
+            width: 100%; max-width: 800px; display: flex;
+            animation: messagePop 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+            opacity: 0; transform: translateY(10px);
+        }
+
+        @keyframes messagePop { to { opacity: 1; transform: translateY(0); } }
+
+        .message-row.user { justify-content: flex-end; }
+        .message-row.bot { justify-content: flex-start; }
+
+        .bubble {
+            max-width: 85%; padding: 16px 22px; border-radius: 24px;
+            font-size: 16px; line-height: 1.5; letter-spacing: -0.01em;
+        }
+
+        .message-row.user .bubble {
+            background: var(--bubble-user); border-bottom-right-radius: 6px; color: #ffffff;
+            box-shadow: 0 4px 20px rgba(10, 132, 255, 0.3);
+        }
+
+        .message-row.bot .bubble {
+            background: var(--bubble-bot); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--glass-border); border-bottom-left-radius: 6px; color: var(--text-primary);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+
+        .bubble pre {
+            background: rgba(0,0,0,0.6); border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 14px; padding: 16px; margin: 12px 0; overflow-x: auto; position: relative;
+        }
+        .bubble code { font-family: "SF Mono", Menlo, Consolas, monospace; font-size: 14px; }
+        .bubble p { margin-bottom: 12px; } .bubble p:last-child { margin-bottom: 0; }
+
+        /* ==========================================================================
+           Floating Input
+           ========================================================================== */
+        .input-wrapper {
+            position: absolute; bottom: 32px; left: 50%; transform: translateX(-50%);
+            width: 100%; max-width: 800px; padding: 0 20px; z-index: 40;
+        }
+
+        .input-box {
+            background: rgba(30, 30, 32, 0.7); backdrop-filter: blur(40px) saturate(200%); -webkit-backdrop-filter: blur(40px) saturate(200%);
+            border: 1px solid rgba(255, 255, 255, 0.15); border-radius: 32px; display: flex; align-items: flex-end;
+            padding: 10px 12px 10px 16px; box-shadow: 0 20px 40px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.1);
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .input-box:focus-within {
+            background: rgba(40, 40, 42, 0.85); border-color: rgba(255, 255, 255, 0.3);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.6), 0 0 0 4px rgba(255,255,255,0.05);
+        }
+
+        .tool-btn {
+            background: none; border: none; color: var(--text-secondary); padding: 8px; cursor: pointer; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center; transition: all 0.2s; margin-right: 4px; margin-bottom: 2px;
+        }
+        .tool-btn:hover { background: rgba(255,255,255,0.1); color: var(--text-primary); }
+
+        textarea {
+            flex: 1; background: transparent; border: none; color: var(--text-primary);
+            font-size: 16px; line-height: 1.4; resize: none; outline: none; max-height: 160px; padding: 10px 8px; margin: 0 4px;
+        }
+        textarea::placeholder { color: var(--text-secondary); }
+
+        .send-btn {
+            background: var(--text-primary); color: #000; border: none; width: 40px; height: 40px;
+            border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer;
+            flex-shrink: 0; margin-bottom: 2px; margin-left: 4px; transition: transform 0.2s;
+        }
+        .send-btn:active { transform: scale(0.9); }
+        .send-btn:disabled { background: rgba(255,255,255,0.15); color: rgba(255,255,255,0.3); cursor: not-allowed; transform: none; }
+
+        /* Settings Modal */
+        .settings-overlay {
+            display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px); z-index: 200; justify-content: center; align-items: center;
+            opacity: 0; transition: opacity 0.3s;
+        }
+        .settings-overlay.show { opacity: 1; }
+
+        .settings-card {
+            width: 90%; max-width: 360px; border-radius: 32px; padding: 32px; text-align: left;
+            transform: scale(0.95); transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .settings-overlay.show .settings-card { transform: scale(1); }
+
+        .danger-btn {
+            width: 100%; background: rgba(255, 69, 58, 0.15); color: #FF453A; border: none; border-radius: 16px;
+            padding: 16px; font-size: 16px; font-weight: 600; cursor: pointer; margin-top: 12px; transition: background 0.2s;
+        }
+        .danger-btn:hover { background: rgba(255, 69, 58, 0.25); }
+
+        @media (max-width: 768px) {
+            #sidebar { position: absolute; transform: translateX(-100%); width: 85%; max-width: 320px; }
+            #sidebar.open { transform: translateX(0); box-shadow: 0 0 100px rgba(0,0,0,0.8); }
+            .mobile-nav { display: flex; }
+            .input-wrapper { bottom: 16px; padding: 0 12px; }
+            .bubble { max-width: 92%; }
+            .welcome-screen h1 { font-size: 32px; }
+            .suggestions-grid { grid-template-columns: 1fr; gap: 12px; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="ambient-glow"></div>
+    <div id="toast-container"></div>
+
+    <!-- Auth View -->
+    <div id="auth-view">
+        <div class="auth-card apple-glass">
+            <div id="standard-login">
+                <i data-lucide="command" class="auth-logo"></i>
+                <h2 id="auth-title">BilalToday AI</h2>
+                <form id="auth-form">
+                    <div class="input-group">
+                        <input type="email" id="email" class="glass-input" placeholder="E-Mail" required>
+                    </div>
+                    <div class="input-group">
+                        <input type="password" id="password" class="glass-input" placeholder="Passwort" required minlength="6">
+                    </div>
+                    <button type="submit" id="auth-submit" class="glass-btn">Einloggen</button>
+                </form>
+                <div class="auth-switch" id="auth-switch">Neuen Account erstellen</div>
+                <div class="admin-bypass" onclick="showAdminLogin()">Admin Zugang</div>
+            </div>
+
+            <!-- Admin PIN Login -->
+            <div id="admin-view">
+                <i data-lucide="shield-check" class="auth-logo" style="color: #FF9F0A;"></i>
+                <h2>Systemzugang</h2>
+                <p style="color: var(--text-secondary); font-size: 14px; margin-bottom: 24px;">Bitte PIN eingeben.</p>
+                <div class="input-group">
+                    <input type="password" id="admin-pin" class="glass-input" placeholder="PIN" style="text-align: center; letter-spacing: 0.5em; font-size: 20px;">
+                </div>
+                <button onclick="loginAsAdmin()" id="admin-btn" class="glass-btn" style="background: #FF9F0A; color: #000;">Entsperren</button>
+                <div class="admin-bypass" style="margin-top: 20px;" onclick="showStandardLogin()">Zurück</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- App View -->
+    <div id="app-view">
+        <aside id="sidebar">
+            <div class="sidebar-header">
+                <button class="new-chat-btn" onclick="createNewChat()">
+                    <i data-lucide="square-pen" size="20"></i> Neuer Chat
+                </button>
+            </div>
+            <div class="chat-list" id="chat-list"></div>
+            <div class="sidebar-footer">
+                <div class="user-profile" onclick="openSettings()">
+                    <i data-lucide="circle-user" size="24"></i>
+                    <div style="flex:1; overflow:hidden;">
+                        <div id="user-display" style="text-overflow:ellipsis; overflow:hidden; white-space:nowrap; font-weight:600; color:#fff;">User</div>
+                        <div id="user-badge" style="font-size:12px; color:#FF9F0A; display:none;">Admin-Modus</div>
+                    </div>
+                    <i data-lucide="settings-2" size="20"></i>
+                </div>
+            </div>
+        </aside>
+
+        <main id="main-chat">
+            <div class="mobile-nav">
+                <button class="icon-btn" onclick="toggleSidebar()"><i data-lucide="menu" size="24"></i></button>
+                <span style="font-weight: 600; font-size: 16px; letter-spacing: -0.02em;">BilalToday AI</span>
+                <button class="icon-btn" onclick="createNewChat()"><i data-lucide="square-pen" size="24"></i></button>
+            </div>
+
+            <div id="chat-messages">
+                <div id="welcome-screen" class="welcome-screen">
+                    <i data-lucide="sparkles" size="56" stroke-width="1.5" style="color: #fff; margin-bottom: 20px; filter: drop-shadow(0 0 15px rgba(255,255,255,0.5));"></i>
+                    <h1>Was möchtest du tun?</h1>
+                    
+                    <div class="suggestions-grid">
+                        <div class="suggestion-card" onclick="fillInput('Erkläre mir in 3 Sätzen, wie KI funktioniert.')">
+                            <h4 style="color: #0A84FF;"><i data-lucide="brain-circuit" size="16"></i> Wissen</h4>
+                            <p>Komplexe Themen einfach erklärt.</p>
+                        </div>
+                        <div class="suggestion-card" onclick="fillInput('Schreibe eine professionelle E-Mail für BilalToday.')">
+                            <h4 style="color: #32D74B;"><i data-lucide="pen-tool" size="16"></i> Schreiben</h4>
+                            <p>E-Mails, Artikel und Texte verfassen.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="input-wrapper">
+                <div class="input-box">
+                    <button class="tool-btn" onclick="showToast('Dateianhänge werden bald unterstützt.')"><i data-lucide="paperclip" size="20"></i></button>
+                    <textarea id="message-input" rows="1" placeholder="Nachricht an BilalToday..."></textarea>
+                    <button class="tool-btn" onclick="showToast('Spracheingabe ist in Entwicklung.')"><i data-lucide="mic" size="20"></i></button>
+                    <button id="send-btn" class="send-btn" disabled><i data-lucide="arrow-up" stroke-width="3" size="20"></i></button>
+                </div>
+                <div style="text-align: center; margin-top: 8px; font-size: 11px; color: rgba(255,255,255,0.4);">
+                    BilalToday AI kann Fehler machen. Überprüfe wichtige Informationen.
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Settings Modal -->
+    <div id="settings-overlay" class="settings-overlay" onclick="closeSettings(event)">
+        <div class="settings-card apple-glass" onclick="event.stopPropagation()">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 24px;">
+                <h3 style="font-weight: 600; font-size: 22px;">Account</h3>
+                <button class="icon-btn" style="background: rgba(255,255,255,0.1); border-radius: 50%; padding: 6px;" onclick="closeSettings(event)"><i data-lucide="x" size="18"></i></button>
+            </div>
+            
+            <div style="background: rgba(255,255,255,0.05); border-radius: 16px; padding: 16px; margin-bottom: 20px;">
+                <div style="font-size: 12px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px;">Angemeldet als</div>
+                <div id="settings-email" style="font-weight: 500; font-size: 16px;">...</div>
+            </div>
+
+            <button class="danger-btn" onclick="clearAllChats()"><i data-lucide="trash-2" size="18" style="display:inline-block; vertical-align:middle; margin-right:8px;"></i> Alle Chats löschen</button>
+            <button class="glass-btn" onclick="logout()" style="margin-top: 12px; background: #fff;">Abmelden</button>
+        </div>
+    </div>
+
+    <script>
+        // --- DEINE CLOUDFLARE WORKER URL ---
+        const WORKER_URL = 'https://bilaltodaycom.onlinegeme199.workers.dev'; 
+        
+        let isLoginMode = true;
+        let token = localStorage.getItem('bt_token') || null;
+        let userEmail = localStorage.getItem('bt_email') || null;
+        let isAdminMode = localStorage.getItem('bt_is_admin') === 'true';
+        let chats = [];
+        let currentChatId = null;
+        let isGenerating = false;
+
+        lucide.createIcons();
+        marked.setOptions({
+            highlight: function(code, lang) {
+                const language = hljs.getLanguage(lang) ? lang : 'plaintext';
+                return hljs.highlight(code, { language }).value;
+            }
+        });
+
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = 'toast';
+            const icon = type === 'error' ? '<i data-lucide="alert-circle" size="18" style="color:#FF453A;"></i>' : '<i data-lucide="info" size="18" style="color:#0A84FF;"></i>';
+            toast.innerHTML = `${icon} <span>${message}</span>`;
+            container.appendChild(toast);
+            lucide.createIcons();
+            
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                toast.style.transform = 'translateY(-20px) scale(0.9)';
+                setTimeout(() => toast.remove(), 400);
+            }, 3000);
+        }
+
+        const authView = document.getElementById('auth-view');
+        const appView = document.getElementById('app-view');
+        
+        if (token) showApp();
+
+        document.getElementById('auth-switch').addEventListener('click', () => {
+            isLoginMode = !isLoginMode;
+            document.getElementById('auth-submit').innerText = isLoginMode ? 'Einloggen' : 'Account erstellen';
+            document.getElementById('auth-switch').innerText = isLoginMode ? 'Neuen Account erstellen' : 'Bereits registriert? Einloggen';
+        });
+
+        function showAdminLogin() {
+            document.getElementById('standard-login').style.display = 'none';
+            document.getElementById('admin-view').style.display = 'block';
+            document.getElementById('admin-pin').value = '';
+        }
+
+        function showStandardLogin() {
+            document.getElementById('admin-view').style.display = 'none';
+            document.getElementById('standard-login').style.display = 'block';
+        }
+
+        // --- DER ADMIN-BYPASS (Loggt sich im Hintergrund auf deiner API ein!) ---
+        async function loginAsAdmin() {
+            const pin = document.getElementById('admin-pin').value;
+            const btn = document.getElementById('admin-btn');
+
+            if(pin !== '1612') {
+                showToast('Falsche PIN', 'error');
+                return;
+            }
+
+            btn.innerText = 'Verbinde...';
+            btn.disabled = true;
+
+            try {
+                // Wir nutzen einen festen Admin Account, der im Hintergrund über DEINE API registriert/eingeloggt wird
+                const adminEmail = 'admin@bilaltoday.com';
+                const adminPass = 'BilalAdminSecure1612!';
+                
+                let res;
+                try {
+                    // Versuch 1: Normaler API Login
+                    res = await apiCall('/login', { email: adminEmail, password: adminPass });
+                } catch(e) {
+                    // Versuch 2: Falls der Account noch nicht auf deinem Worker existiert, erstellen wir ihn!
+                    res = await apiCall('/register', { email: adminEmail, password: adminPass });
+                }
+
+                if(res && res.token) {
+                    token = res.token;
+                    userEmail = adminEmail;
+                    isAdminMode = true;
+                    
+                    localStorage.setItem('bt_token', token);
+                    localStorage.setItem('bt_email', userEmail);
+                    localStorage.setItem('bt_is_admin', 'true');
+                    
+                    showApp();
+                    showToast('Admin entsperrt. API verbunden.', 'info');
+                } else {
+                    throw new Error("Konnte kein Token empfangen.");
+                }
+
+            } catch (error) {
+                showToast("API Fehler: " + error.message, 'error');
+            } finally {
+                btn.innerText = 'Entsperren';
+                btn.disabled = false;
+            }
+        }
+
+        // Standard Login
+        document.getElementById('auth-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const btn = document.getElementById('auth-submit');
+            
+            btn.innerText = 'Verbinde...';
+            btn.disabled = true;
+
+            try {
+                const endpoint = isLoginMode ? '/login' : '/register';
+                const res = await apiCall(endpoint, { email, password });
+
+                token = res.token;
+                userEmail = email;
+                isAdminMode = false;
+                localStorage.setItem('bt_token', token);
+                localStorage.setItem('bt_email', email);
+                localStorage.setItem('bt_is_admin', 'false');
+                
+                showApp();
+            } catch (error) {
+                showToast(error.message, 'error');
+            } finally {
+                btn.innerText = isLoginMode ? 'Einloggen' : 'Account erstellen';
+                btn.disabled = false;
+            }
+        });
+
+        function logout() {
+            localStorage.clear();
+            token = null; userEmail = null; isAdminMode = false; chats = []; currentChatId = null;
+            appView.style.display = 'none';
+            authView.style.display = 'flex';
+            closeSettings({stopPropagation:()=>{}});
+            showStandardLogin();
+        }
+
+        function showApp() {
+            authView.style.display = 'none';
+            appView.style.display = 'flex';
+            
+            document.getElementById('user-display').innerText = isAdminMode ? 'Bilal Admin' : userEmail.split('@')[0];
+            document.getElementById('settings-email').innerText = userEmail;
+            document.getElementById('user-badge').style.display = isAdminMode ? 'block' : 'none';
+            
+            loadChats();
+        }
+
+        function fillInput(text) {
+            const input = document.getElementById('message-input');
+            input.value = text;
+            input.style.height = 'auto';
+            input.style.height = (input.scrollHeight) + 'px';
+            document.getElementById('send-btn').disabled = false;
+            input.focus();
+        }
+
+        const messageInput = document.getElementById('message-input');
+        const sendBtn = document.getElementById('send-btn');
+        const chatMessages = document.getElementById('chat-messages');
+        const welcomeScreen = document.getElementById('welcome-screen');
+
+        messageInput.addEventListener('input', function() {
+            this.style.height = 'auto';
+            this.style.height = (this.scrollHeight) + 'px';
+            sendBtn.disabled = this.value.trim() === '';
+            this.style.overflowY = this.scrollHeight > 160 ? 'auto' : 'hidden';
+        });
+
+        messageInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                if(!sendBtn.disabled) sendMessage();
+            }
+        });
+
+        sendBtn.addEventListener('click', sendMessage);
+
+        async function loadChats() {
+            try {
+                const res = await apiCall('/chats', null, 'GET');
+                if (res.chats) {
+                    chats = res.chats;
+                    renderChatList();
+                }
+            } catch (e) {
+                // Wenn Cloudflare Fehler wirft, laden wir nichts, blockieren aber auch nicht die App.
+            }
+        }
+
+        function renderChatList() {
+            const list = document.getElementById('chat-list');
+            list.innerHTML = '';
+            chats.sort((a,b) => b.updatedAt - a.updatedAt).forEach(chat => {
+                const div = document.createElement('div');
+                div.className = `chat-item ${chat.id === currentChatId ? 'active' : ''}`;
+                div.onclick = () => openChat(chat.id);
+                div.innerHTML = `
+                    <span class="chat-title-text">${chat.title}</span>
+                    <button class="icon-btn" style="opacity:0.5; padding:4px;" onclick="deleteChat('${chat.id}', event)">
+                        <i data-lucide="trash-2" size="16"></i>
+                    </button>
+                `;
+                list.appendChild(div);
+            });
+            lucide.createIcons();
+        }
+
+        function createNewChat() {
+            currentChatId = null;
+            chatMessages.innerHTML = '';
+            chatMessages.appendChild(welcomeScreen);
+            welcomeScreen.style.opacity = '1';
+            welcomeScreen.style.display = 'block';
+            renderChatList();
+            if(window.innerWidth <= 768) toggleSidebar();
+        }
+
+        function openChat(id) {
+            currentChatId = id;
+            renderChatList();
+            if(window.innerWidth <= 768) toggleSidebar();
+            
+            const chat = chats.find(c => c.id === id);
+            chatMessages.innerHTML = '';
+            welcomeScreen.style.display = 'none';
+
+            chat.messages.forEach(msg => appendMessage(msg.role, msg.content));
+            scrollToBottom();
+        }
+
+        async function deleteChat(id, e) {
+            e.stopPropagation();
+            chats = chats.filter(c => c.id !== id);
+            if(currentChatId === id) createNewChat();
+            else renderChatList();
+            
+            try { await apiCall(`/chats/${id}`, null, 'DELETE'); } catch(e) {}
+        }
+
+        async function clearAllChats() {
+            if(confirm("Alle Chats löschen?")) {
+                chats = [];
+                createNewChat();
+                closeSettings({stopPropagation:()=>{}});
+                try { await apiCall('/chats', null, 'DELETE'); } catch(e) {}
+            }
+        }
+
+        async function sendMessage() {
+            if (isGenerating) return;
+            const content = messageInput.value.trim();
+            if (!content) return;
+
+            messageInput.value = '';
+            messageInput.style.height = 'auto';
+            sendBtn.disabled = true;
+            welcomeScreen.style.display = 'none';
+
+            if (!currentChatId) {
+                currentChatId = Date.now().toString();
+                chats.unshift({
+                    id: currentChatId,
+                    title: content.substring(0, 25) + (content.length > 25 ? '...' : ''),
+                    messages: [],
+                    updatedAt: Date.now()
+                });
+                renderChatList();
+            }
+
+            const chat = chats.find(c => c.id === currentChatId);
+            chat.messages.push({ role: 'user', content });
+            appendMessage('user', content);
+            scrollToBottom();
+
+            isGenerating = true;
+            appendLoadingIndicator();
+            scrollToBottom();
+
+            try {
+                // Hier funkt das Frontend an DEINE Cloudflare Worker URL
+                const payload = {
+                    chatId: currentChatId,
+                    message: content,
+                    history: chat.messages.slice(0, -1)
+                };
+
+                const res = await apiCall('/chat', payload);
+                const botResponse = res.reply;
+                
+                chat.messages.push({ role: 'assistant', content: botResponse });
+                
+            } catch (err) {
+                // Wenn dein Cloudflare Worker blockiert (CORS, falscher Key, etc.)
+                chat.messages.push({ 
+                    role: 'assistant', 
+                    content: `⚠️ **Verbindungsfehler zur API**\n\nDein Cloudflare Worker meldet:\n\`${err.message}\`\n\n*Bitte prüfe in Cloudflare, ob die Datenbank (KV) und der OpenAI-Key richtig verknüpft sind.*` 
+                });
+            } finally {
+                removeLoadingIndicator();
+                chat.updatedAt = Date.now();
+                renderChatList();
+                appendMessage('assistant', chat.messages[chat.messages.length -1].content);
+                isGenerating = false;
+                scrollToBottom();
+            }
+        }
+
+        function appendMessage(role, content) {
+            const row = document.createElement('div');
+            row.className = `message-row ${role}`;
+            
+            const isBot = role === 'assistant';
+            let htmlContent = isBot ? DOMPurify.sanitize(marked.parse(content)) : content.replace(/\n/g, '<br>');
+
+            row.innerHTML = `<div class="bubble">${htmlContent}</div>`;
+            chatMessages.appendChild(row);
+
+            row.querySelectorAll('pre').forEach(pre => {
+                pre.style.position = 'relative';
+                const btn = document.createElement('button');
+                btn.innerHTML = '<i data-lucide="copy" size="14"></i>';
+                btn.style.cssText = 'position:absolute; top:8px; right:8px; background:rgba(255,255,255,0.1); border:none; color:#fff; padding:6px; border-radius:8px; cursor:pointer; transition:background 0.2s; backdrop-filter:blur(5px);';
+                btn.onclick = () => {
+                    const code = pre.querySelector('code').innerText;
+                    navigator.clipboard.writeText(code);
+                    btn.innerHTML = '<i data-lucide="check" size="14"></i>';
+                    setTimeout(() => { btn.innerHTML = '<i data-lucide="copy" size="14"></i>'; lucide.createIcons(); }, 2000);
+                };
+                pre.appendChild(btn);
+                lucide.createIcons();
+            });
+        }
+
+        function appendLoadingIndicator() {
+            const row = document.createElement('div');
+            row.className = `message-row bot`;
+            row.id = 'loading-indicator';
+            row.innerHTML = `<div class="bubble typing"><span style="display:inline-block; width:6px; height:6px; background:#fff; border-radius:50%; margin-right:4px; animation:blink 1s infinite alternate;"></span><span style="display:inline-block; width:6px; height:6px; background:#fff; border-radius:50%; margin-right:4px; animation:blink 1s infinite alternate 0.2s;"></span><span style="display:inline-block; width:6px; height:6px; background:#fff; border-radius:50%; animation:blink 1s infinite alternate 0.4s;"></span></div>`;
+            chatMessages.appendChild(row);
+            
+            if(!document.getElementById('typing-style')) {
+                const style = document.createElement('style');
+                style.id = 'typing-style';
+                style.innerHTML = `@keyframes blink { 0% { opacity: 0.3; } 100% { opacity: 1; } }`;
+                document.head.appendChild(style);
+            }
+        }
+
+        function removeLoadingIndicator() {
+            const el = document.getElementById('loading-indicator');
+            if(el) el.remove();
+        }
+
+        function scrollToBottom() {
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        function toggleSidebar() {
+            document.getElementById('sidebar').classList.toggle('open');
+        }
+
+        const overlay = document.getElementById('settings-overlay');
+        function openSettings() {
+            overlay.style.display = 'flex';
+            setTimeout(() => overlay.classList.add('show'), 10);
+        }
+        function closeSettings(e) {
+            e.stopPropagation();
+            overlay.classList.remove('show');
+            setTimeout(() => overlay.style.display = 'none', 300);
+        }
+
+        // --- ZUVERLÄSSIGER FETCH WRAPPER FÜR CLOUDFLARE ---
+        async function apiCall(endpoint, payload = null, method = 'POST') {
+            const headers = { 'Content-Type': 'application/json' };
+            if (token) headers['Authorization'] = `Bearer ${token}`;
+
+            const options = { method, headers };
+            if (payload) options.body = JSON.stringify(payload);
+
+            try {
+                const res = await fetch(`${WORKER_URL}${endpoint}`, options);
+                const text = await res.text();
+                
+                let data;
+                try {
+                    data = JSON.parse(text);
+                } catch(e) {
+                    throw new Error(`Die API hat mit einem HTML-Fehler geantwortet (Status: ${res.status}). Bitte Cloudflare Worker prüfen.`);
+                }
+
+                if (!res.ok) throw new Error(data.error || `Server Fehler ${res.status}`);
+                return data;
+
+            } catch (error) {
+                throw new Error(error.message);
+            }
+        }
+    </script>
+</body>
+</html>
+
+
+```
